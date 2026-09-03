@@ -1,0 +1,5 @@
+"0","sim_plot(m2, xvar = ""body_mass"")"
+"1","[1m[33mError[39m in `validate_x()`:[22m
+[33m![39m length(x) must be equal to length(y).
+[90mRun `]8;;x-r-run:rlang::last_trace()rlang::last_trace()]8;;` to see where the error occurred.[39m
+"

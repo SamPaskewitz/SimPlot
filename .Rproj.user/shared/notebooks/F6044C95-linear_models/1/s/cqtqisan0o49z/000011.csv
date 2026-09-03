@@ -1,0 +1,6 @@
+"0","m1 = lm(y ~ x, data = sim_data1)"
+"0","m2 = lm(y ~ x, data = sim_data2)"
+"0","m3 = lm(y ~ x, data = sim_data3)"
+"0","m4 = lm(y ~ x, data = sim_data4)"
+"0","m5 = lm(y ~ x, data = sim_data5)"
+"0","m6 = lm(y ~ x, data = sim_data6)"
