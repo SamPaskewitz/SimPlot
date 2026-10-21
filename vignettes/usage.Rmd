@@ -17,39 +17,92 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(SimPlot)
 library(dplyr)
+library(ggplot2)
 ```
 
-## 
+#### simulate data for examples
 ```{r}
-sim_data1 = data.frame(x = runif(n = 20, min = 0, max = 1)) |> 
-  mutate(y = 1 + 1.5*x + rnorm(n = 20, mean = 0, sd = 1))
-
-m = lm(y ~ x, data = sim_data1)
+set.seed(1212)
+sim_data = data.frame(contin_var1 = rnorm(n = 30)) |>
+  mutate(contin_var2 = rnorm(n = 30, mean = 0.8*contin_var1, sd = 1)) |>
+  mutate(cat_var1 = rbinom(n = 30, size = 1, prob = plogis(0.8*contin_var1))) |>
+  mutate(cat_var1 = ifelse(cat_var1 == 0, "cat a", "cat b") |> as.factor()) |>
+  mutate(cat_var2 = rbinom(n = 30, size = 1, prob = plogis(-0.5*contin_var1))) |>
+  mutate(cat_var2 = ifelse(cat_var2 == 0, "cat c", "cat d") |> as.factor()) |>
+  mutate(count_var1 = rpois(n = 30, lambda = exp(1.0*contin_var1))) |>
+  mutate(count_var2 = rpois(n = 30, lambda = exp(-1.0*contin_var1))) |>
+  mutate(k = 10)
 ```
 
+#### fit models for examples
 ```{r}
-sim_plot(m)
+contin_model = lm(contin_var2 ~ contin_var1 + cat_var1 + count_var1, data = sim_data)
+cat_model = glm(cat_var2 ~ contin_var1 + cat_var1 + count_var1, family = "binomial", data = sim_data)
+count_model = glm(count_var2 ~ contin_var1 + cat_var1 + count_var1, family = "poisson", data = sim_data)
 ```
 
+## y is continuous
+
+#### marginal plot of continuous y
 ```{r}
-sim_plot(m, xvar = "x")
+sim_plot(contin_model)
 ```
 
+#### continuous predictor, continuous y
 ```{r}
-sim_data2 = data.frame(x = runif(n = 20, min = 0, max = 1)) |>
-  mutate(y = rbinom(n = 20, size = 1, prob = plogis(0.1 + 0.8*x))) |>
-  mutate(y = ifelse(y == 0, "cat a", "cat b") |> as.factor())
-
-m2 = glm(y ~ x, data = sim_data2, family = binomial())
+sim_plot(contin_model, pred = "contin_var1")
 ```
 
+#### cat predictor, continuous y
 ```{r}
-sim_plot(m2)
+sim_plot(contin_model, pred = "cat_var1")
 ```
 
+#### count predictor, continuous y
 ```{r}
-sim_plot(m2, xvar = "body_mass")
+sim_plot(contin_model, predictor = "count_var1")
 ```
 
+## y is categorical
 
+#### marginal plot of categorical y
+```{r}
+sim_plot(cat_model)
+```
 
+#### continuous predictor, categorical y
+```{r}
+sim_plot(cat_model, pred = "contin_var1")
+```
+
+#### cat predictor, categorical y
+```{r}
+sim_plot(cat_model, pred = "cat_var1")
+```
+
+#### count predictor, categorical y
+```{r}
+sim_plot(cat_model, predictor = "count_var1")
+```
+
+## y is count data
+
+#### marginal plot of count y
+```{r}
+sim_plot(count_model)
+```
+
+#### continuous predictor, count y
+```{r}
+sim_plot(count_model, pred = "contin_var1")
+```
+
+#### cat predictor, count y
+```{r}
+sim_plot(count_model, pred = "cat_var1")
+```
+
+#### count predictor, count y
+```{r}
+sim_plot(count_model, predictor = "count_var1")
+```

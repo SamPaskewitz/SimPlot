@@ -1,4 +1,0 @@
-"0","sim_data1 = data.frame(x = runif(n = 20, min = 0, max = 1)) |> "
-"0","  mutate(y = 1 + 1.5*x + rnorm(n = 20, mean = 0, sd = 1))"
-"0",""
-"0","m = lm(y ~ x, data = sim_data1)"

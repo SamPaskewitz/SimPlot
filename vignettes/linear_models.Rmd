@@ -16,6 +16,8 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(SimPlot)
+library(dplyr)
+library(ggplot2)
 ```
 
 ```{r simulate_data}
@@ -67,11 +69,11 @@ sim_plot(m6)
 ```
 
 ```{r scatterplots}
-sim_plot(m1, xvar = "x")
-sim_plot(m2, xvar = "x")
-sim_plot(m3, xvar = "x")
-sim_plot(m4, xvar = "x")
-sim_plot(m5, xvar = "x")
-sim_plot(m6, xvar = "x")
+sim_plot(m1, predictor = "x")
+sim_plot(m2, predictor = "x")
+sim_plot(m3, predictor = "x")
+sim_plot(m4, predictor = "x")
+sim_plot(m5, predictor = "x")
+sim_plot(m6, predictor = "x")
 ```
 

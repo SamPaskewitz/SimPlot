@@ -1,103 +1,112 @@
-is_count_data = function(y){
-  y_unique = unique(y) |> sort()
-  integers_to_check = 0:(length(y_unique) - 1)
-  matches = all(y_unique %in% integers_to_check)
-  return(matches)
+data_type = function(u){
+  if(is.character(u) | is.factor(u)){
+    type = "cat"
+  } else{
+    u_unique = unique(u) |> sort()
+    integers_to_check = 0:max(u_unique)
+    if(all(u_unique %in% integers_to_check)){
+      type = "count"
+    } else{
+      type = "contin"
+    }
+  }
+  return(type)
+}
+
+is_count_data = function(u){
+  if(is_cat_data(u)){
+    return(FALSE)
+  } else{
+    u_unique = unique(u) |> sort()
+    integers_to_check = 0:max(u_unique)
+    is_count_data = all(u_unique %in% integers_to_check)
+    return(is_count_data)
+  }
+}
+
+is_cat_data = function(u){
+  is_cat_data = is.character(u) | is.factor(u)
+  return(is_cat_data)
+}
+
+is_contin_data = function(u){
+  return(!(is_count_data(u) | is_cat_data(u)))
 }
 
 really_has_method = function(mth, obj){
   sapply(class(obj), function(cl){!is.null(utils::getS3method(mth, cl, optional = TRUE))}) |> any()
 }
 
-sim_plot_bayesplot = function(obj, group = NA, xvar = NA, nsim = 5){
-  # simulate data from the fitted model
-  if(really_has_method("posterior_predict", obj)){
-    # use "posterior_predict" if available
-    ysim = posterior_predict(obj, nsim = nsim)
-  } else{
-    # otherwise use "simulate"
-    ysim = simulate(obj, nsim = nsim)
-    if(is.factor(ysim[,1])){ # fix factor data
-      ysim = ysim |> sapply(function(x){as.numeric(x) - 1})
-    }
-    ysim = ysim |> as.matrix() |> t()
+#' Plot simulated data from a fitted regression model against the real data.
+#'
+#' @param obj The fitted regression model.
+#' @param predictor Name of a predictor (independent) variable. Optional.
+#' @details
+#' The type of plot created depends on the predicted/dependent variable ("y") and whether "predictor" is specified. There are several cases depending on the type of data:
+#'
+#' 1) "predictor" is not specified, "y" is continuous: kernel density estimates
+#' 2) "predictor" is not specified, "y" is count or categorical: bar plot of counts
+#' 3) "predictor" is specified, "y" is continuous: scatter plot with "predictor" on the x-axis and "y" on the y-axis
+#' 4) "predictor" is continuous and "y" is categorical or count: scatter plot with "predictor" on the x-axis and "y" (or a code for it if categorical) on the y-axis"
+#' 5) "predictor" is categorical and "y" is categorical or count: bar plot of counts, separated by "predictor" (with different colors)
+#' 6) "predictor" is count and "y" is categorical or count: "geom_count" style modified scatter plot with "predictor" on the x-axis and "y" (or a code for it if categorical) on the y-axis"; this will prevent overplotting
+#'
+#' @export
+sim_plot = function(obj, predictor = NA, seed = NA){
+  # set random seed (optionally)
+  if(!is.na(seed)){
+    set.seed(seed)
   }
 
-  # get actual data (y)
-  y = model.frame(obj)[,1]
-  if(is.factor(y)){ # fix factor data
-    y = as.numeric(y) - 1
-  }
-
-  # select type of post pred plot
-  if(is.na(xvar)){
-    # discrete data (y)
-    if(is_count_data(ysim[1,])){
-      if(is.na(group)){
-        pt = bayesplot::ppc_bars(y = y, yrep = ysim, prob = 0)
-      } else{
-        pt = bayesplot::ppc_bars_grouped(y = y, yrep = ysim, group = model.frame(obj)[,group], prob = 0)
-      }
-    } else{
-      # continuous data (y)
-      if(is.na(group)){
-        pt = bayesplot::ppc_dens_overlay(y = y, yrep = ysim)
-      } else{
-        pt = bayesplot::ppc_dens_overlay_grouped(y = y, yrep = ysim, group = model.frame(obj)[,group])
-      }
-    }
-  } else{
-    if(is.na(group)){
-      pt = bayesplot::ppc_intervals(y = y, yrep = ysim[sample(1:nrow(ysim), size = 1),,drop=FALSE], x = model.frame(obj)[,xvar], prob = 0.001, prob_outer = 0.001) + ggplot2::xlab(xvar)
-    } else{
-      pt = bayesplot::ppc_intervals_grouped(y = y, yrep = ysim[sample(1:nrow(ysim), size = 1),,drop=FALSE], group = model.frame(obj)[,group], x = model.frame(obj)[,xvar], prob = 0.001, prob_outer = 0.001) + ggplot2::xlab(xvar)
-    }
-  }
-
-  return(pt)
-}
-
-sim_plot = function(obj, group = NA, xvar = NA){
   # get real data
-  yreal = model.frame(obj)[,1]
-  #if(is.factor(yreal)){ # fix factor data
-  #  yreal = as.numeric(yreal) - 1
-  #}
+  real_data = data.frame(y = model.frame(obj)[,1],
+                         data_set = "real",
+                         type = "real")
+  if(is.factor(real_data$y)){ # fix factor data
+    real_data$y = as.character(real_data$y)
+  }
+  y_data_type = data_type(real_data$y) # classify
 
   # simulate data from the fitted model
-  ysim = simulate(obj, nsim = 1)[,1] |> as.vector()
-  #if(is.factor(ysim)){ # fix factor data
-  #  ysim = as.numeric(ysim) - 1
-  #}
+  sim_data = simulate(obj, nsim = 3)
+  if(is.factor(sim_data[,1])){ # fix factor data
+    sim_data = sim_data |> lapply(as.character)
+  }
+  sim_data = sim_data |>
+    stack() |>
+    dplyr::rename(y = values, data_set = ind) |>
+    dplyr::mutate(type = "simulated")
 
   # combine real and simulated data
-  plot_data = data.frame(y = c(yreal, ysim),
-                         type = rep(c("real", "simulated"), each = length(ysim)))
+  combo_data = rbind(real_data, sim_data)
 
-  # add grouping variable if needed
-  if(!is.na(group)){
-    plot_data$group = model.frame(obj)[,group]
+  # add predictor if needed
+  if(!is.na(predictor)){
+    combo_data$predictor = model.frame(obj)[,predictor]
+    pred_data_type = data_type(combo_data$predictor) # classify
   }
 
   # make the plot
-  if(is.na(xvar)){ # marginal distribution plot
-    if(is_count_data(ysim)){
-      plot_obj = plot_data |> ggplot(aes(x = y, color = type)) +
-        geom_bar()
+  if(is.na(predictor)){ # marginal distribution plot
+    plot_obj = combo_data |> ggplot2::ggplot(aes(x = y))
+    if(y_data_type == "contin"){
+      plot_obj = plot_obj + ggplot2::geom_density(fill = "lightblue") # case 1
     } else{
-      plot_obj = plot_data |> ggplot(aes(x = y, color = type)) +
-        geom_density()
+      plot_obj = plot_obj + ggplot2::geom_bar() # case 2
     }
-  } else{ # scatterplot
-    plot_data$x = model.frame(obj)[,xvar]
-    plot_obj = plot_data |> ggplot(aes(x = x, y = y, color = type)) +
-      geom_point()
+  } else{ # plot with predictor
+    plot_obj = combo_data |> ggplot2::ggplot()
+    if(y_data_type == "contin"){
+      plot_obj = plot_obj + ggplot2::geom_point(aes(x = predictor, y = y)) # case 3
+    } else if(pred_data_type == "contin" & y_data_type %in% c("cat", "count")){
+      plot_obj = plot_obj + ggplot2::geom_point(aes(x = predictor, y = y)) # case 4
+    } else if(pred_data_type == "cat" & y_data_type %in% c("cat", "count")){
+      plot_obj = plot_obj + ggplot2::geom_bar(aes(x = y, fill = predictor, group = predictor), position = position_dodge2(preserve = "single")) # case 5
+    } else if(pred_data_type == "count" & y_data_type %in% c("cat", "count")){
+      plot_obj = plot_obj + ggplot2::geom_count(aes(x = predictor, y = y)) # case 6
+    }
   }
-
-  # facet by group if needed
-  if(!is.na(group)){
-    plot_obj = plot_obj + facet_wrap(group)
-  }
+  plot_obj = plot_obj + ggplot2::facet_wrap(~ data_set)
 
   return(plot_obj)
 }
